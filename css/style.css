@@ -114,10 +114,30 @@ body {
     gap: 8px;
 }
 
+.tool-row select {
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+    color: #333;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.tool-row select:hover {
+    border-color: #667eea;
+}
+
 .tool-label {
     font-size: 13px;
     color: #666;
     min-width: 50px;
+}
+
+.snap-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .note-buttons {

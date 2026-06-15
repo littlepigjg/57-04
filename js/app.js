@@ -12,6 +12,9 @@
         const tempoInput = document.getElementById('tempoInput');
         const dottedCheck = document.getElementById('dottedCheck');
         const tieCheck = document.getElementById('tieCheck');
+        const snapEnabledCheck = document.getElementById('snapEnabledCheck');
+        const showGridCheck = document.getElementById('showGridCheck');
+        const snapGridSize = document.getElementById('snapGridSize');
 
         const playBtn = document.getElementById('playBtn');
         const pauseBtn = document.getElementById('pauseBtn');
@@ -181,6 +184,19 @@
             scoreRenderer.setTempo(tempo);
             synthesizer.setTempo(tempo);
             midiExporter.setTempo(tempo);
+        });
+
+        snapEnabledCheck.addEventListener('change', () => {
+            scoreRenderer.setSnapEnabled(snapEnabledCheck.checked);
+        });
+
+        showGridCheck.addEventListener('change', () => {
+            scoreRenderer.setShowGrid(showGridCheck.checked);
+        });
+
+        snapGridSize.addEventListener('change', () => {
+            const size = parseFloat(snapGridSize.value);
+            scoreRenderer.setSnapGridSize(size);
         });
 
         playBtn.addEventListener('click', async () => {

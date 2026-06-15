@@ -90,6 +90,29 @@
                     </div>
                 </div>
 
+                <h3 style="margin-top: 20px;">吸附设置</h3>
+                <div class="snap-settings">
+                    <div class="tool-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="snapEnabledCheck" checked> 启用智能吸附
+                        </label>
+                    </div>
+                    <div class="tool-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showGridCheck" checked> 显示网格线
+                        </label>
+                    </div>
+                    <div class="tool-row">
+                        <span class="tool-label">吸附精度：</span>
+                        <select id="snapGridSize">
+                            <option value="1">四分音符 (1拍)</option>
+                            <option value="0.5">八分音符 (1/2拍)</option>
+                            <option value="0.25">十六分音符 (1/4拍)</option>
+                            <option value="0.125">三十二分音符 (1/8拍)</option>
+                        </select>
+                    </div>
+                </div>
+
                 <h3 style="margin-top: 20px;">播放控制</h3>
                 <div class="playback-controls">
                     <button id="playBtn" class="play-btn">▶ 播放</button>

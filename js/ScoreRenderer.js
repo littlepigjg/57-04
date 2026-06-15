@@ -11,6 +11,10 @@ class ScoreRenderer {
         this.timeSignature = options.timeSignature || '4/4';
         this.tempo = options.tempo || 120;
 
+        this.snapEnabled = true;
+        this.snapGridSize = 1;
+        this.showGrid = true;
+
         this.config = {
             paddingTop: 60,
             paddingBottom: 40,
@@ -31,7 +35,9 @@ class ScoreRenderer {
                 barLine: '#333',
                 tie: '#666',
                 text: '#666',
-                background: '#fffef8'
+                background: '#fffef8',
+                grid: 'rgba(102, 126, 234, 0.15)',
+                gridStrong: 'rgba(102, 126, 234, 0.3)'
             }
         };
 
@@ -91,6 +97,42 @@ class ScoreRenderer {
 
     setTempo(tempo) {
         this.tempo = tempo;
+    }
+
+    setSnapEnabled(enabled) {
+        this.snapEnabled = enabled;
+        this.render();
+    }
+
+    setSnapGridSize(size) {
+        this.snapGridSize = size;
+        this.render();
+    }
+
+    setShowGrid(show) {
+        this.showGrid = show;
+        this.render();
+    }
+
+    getSnapEnabled() {
+        return this.snapEnabled;
+    }
+
+    getSnapGridSize() {
+        return this.snapGridSize;
+    }
+
+    getShowGrid() {
+        return this.showGrid;
+    }
+
+    snapDuration(duration) {
+        if (!this.snapEnabled || this.snapGridSize <= 0) {
+            return duration;
+        }
+        const gridSize = this.snapGridSize;
+        const snapped = Math.round(duration / gridSize) * gridSize;
+        return Math.max(0, snapped);
     }
 
     setSelectedNote(id) {
@@ -161,7 +203,33 @@ class ScoreRenderer {
                 durationSum += this.notes[i].duration;
             }
         }
-        const position = durationSum;
+
+        let position = durationSum;
+
+        if (this.snapEnabled) {
+            const rawDuration = this._xToDuration(x);
+            const snappedDuration = this.snapDuration(rawDuration);
+
+            let snappedIndex = this.notes.length;
+            let cumulativeDuration = 0;
+            for (let i = 0; i < this.notes.length; i++) {
+                const noteStart = cumulativeDuration;
+                const noteEnd = cumulativeDuration + this.notes[i].duration;
+
+                if (snappedDuration < noteEnd) {
+                    if (snappedDuration - noteStart < noteEnd - snappedDuration) {
+                        snappedIndex = i;
+                    } else {
+                        snappedIndex = i + 1;
+                    }
+                    break;
+                }
+                cumulativeDuration = noteEnd;
+            }
+
+            insertIndex = snappedIndex;
+            position = snappedDuration;
+        }
 
         return { index: insertIndex, position };
     }
@@ -259,6 +327,7 @@ class ScoreRenderer {
 
         this._drawHeader();
         this._drawStaff();
+        this._drawGridLines();
         this._drawBarLines();
         this._drawTies();
         this._drawNotes();
@@ -281,6 +350,92 @@ class ScoreRenderer {
         ctx.font = `14px ${this._getFont()}`;
         ctx.fillStyle = '#999';
         ctx.fillText('点击谱面添加音符', this.renderWidth - 200, 25);
+    }
+
+    _xToDuration(x) {
+        const cfg = this.config;
+        const lineWidth = this.renderWidth - cfg.paddingLeft - cfg.paddingRight;
+        const beatsPerRow = Math.floor(lineWidth / (cfg.noteWidth + cfg.noteSpacing));
+        const beatsPerBar = parseInt(this.timeSignature.split('/')[0]);
+
+        const relX = x - cfg.paddingLeft;
+        const row = Math.floor(relX / lineWidth);
+        const colX = relX - row * lineWidth;
+
+        let duration = colX / (cfg.noteWidth + cfg.noteSpacing);
+        duration = Math.max(0, duration);
+
+        return duration;
+    }
+
+    _durationToX(duration) {
+        const cfg = this.config;
+        const lineWidth = this.renderWidth - cfg.paddingLeft - cfg.paddingRight;
+        const beatsPerRow = Math.floor(lineWidth / (cfg.noteWidth + cfg.noteSpacing));
+
+        const row = Math.floor(duration / beatsPerRow);
+        const col = duration - row * beatsPerRow;
+
+        const x = cfg.paddingLeft + col * (cfg.noteWidth + cfg.noteSpacing) + cfg.noteWidth / 2;
+        const rowY = cfg.paddingTop + 60 + row * 120;
+
+        return { x, rowY };
+    }
+
+    _drawGridLines() {
+        if (!this.showGrid) return;
+
+        const ctx = this.ctx;
+        const cfg = this.config;
+        const lineWidth = this.renderWidth - cfg.paddingLeft - cfg.paddingRight;
+        const beatsPerRow = Math.floor(lineWidth / (cfg.noteWidth + cfg.noteSpacing));
+        const beatsPerBar = parseInt(this.timeSignature.split('/')[0]);
+        const gridSize = this.snapGridSize;
+
+        if (gridSize <= 0) return;
+
+        let totalBeats = NoteUtils.getTotalDuration(this.notes);
+        const barCount = this.barLines.length + 1;
+        totalBeats += barCount * 0.5;
+        totalBeats = Math.max(totalBeats, beatsPerRow);
+
+        const rows = Math.max(1, Math.ceil(totalBeats / beatsPerRow));
+
+        for (let row = 0; row < rows; row++) {
+            const baseY = cfg.paddingTop + 60 + row * 120;
+            const gridTop = baseY - 25;
+            const gridBottom = baseY + cfg.lineHeight * (cfg.staffLines - 1) - 15;
+
+            const beatsInThisRow = Math.min(beatsPerRow, totalBeats - row * beatsPerRow);
+            const gridLines = Math.ceil(beatsInThisRow / gridSize);
+
+            for (let i = 0; i <= gridLines; i++) {
+                const beatPos = row * beatsPerRow + i * gridSize;
+                const isBarLine = Math.abs(beatPos % beatsPerBar) < 0.001;
+                const isBeat = Math.abs(beatPos % 1) < 0.001;
+
+                const x = cfg.paddingLeft + (i * gridSize) * (cfg.noteWidth + cfg.noteSpacing) + cfg.noteWidth / 2;
+
+                if (x < cfg.paddingLeft || x > this.renderWidth - cfg.paddingRight) continue;
+
+                ctx.beginPath();
+                if (isBarLine) {
+                    ctx.strokeStyle = cfg.color.gridStrong;
+                    ctx.lineWidth = 1.5;
+                } else if (isBeat) {
+                    ctx.strokeStyle = cfg.color.grid;
+                    ctx.lineWidth = 1;
+                } else {
+                    ctx.strokeStyle = cfg.color.grid;
+                    ctx.lineWidth = 0.5;
+                    ctx.setLineDash([3, 3]);
+                }
+                ctx.moveTo(x, gridTop);
+                ctx.lineTo(x, gridBottom);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
     }
 
     _drawStaff() {
